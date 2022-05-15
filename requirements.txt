@@ -8,3 +8,4 @@ black
 pytest
 coverage
 pytest-cov
+requests
