@@ -59,3 +59,8 @@ Fetches the URL present in the active tab of the web browser.
 # Note
 No WebDriver / Selenium components are used. The code relies on generic python libraries for the implementation.
 
+# Known Issues
+
+**MacOS** - **Firefox Browser** - Webbrowser python module opens firefox browser twice. This occurs 50% of the time.
+
+

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 import webbrowser as web
 import sys
 import psutil
@@ -79,11 +79,13 @@ app = FastAPI()
 
 @app.get("/start", status_code=200, description="Starts the browser!")
 async def start_browser(
-    browser_type: str = Query(
+    browser_type: str = Header(
         default=None,
         description="Select the browser you want to open. Only Chrome and Firefox are supported!",
     ),
-    url: str = Query(default=None, description="Type the website URL you want to open"),
+    url: str = Header(
+        default=None, description="Type the website URL you want to open!"
+    ),
 ):
     browser_type = browser_type.lower()
 
@@ -104,16 +106,16 @@ async def start_browser(
 
     browser_path = _get_browser_path(os_type, browser_type)
 
-    web.get(browser_path).open(url)
-    return f"The browser opened successfully!"
+    web.get(browser_path).open_new_tab(url)
+    return "The browser opened successfully!"
 
 
 @app.get("/stop", status_code=200, description="Stops the opened browser!")
 async def stop_browser(
-    browser_type: str = Query(
+    browser_type: str = Header(
         default=None,
         description="Select the browser you want to close. Only Chrome and Firefox are supported!",
-    ),
+    )
 ):
     browser_type = browser_type.lower()
     os_type = _detect_os()
@@ -124,77 +126,62 @@ async def stop_browser(
             detail="Invalid Browser Type! Only Firefox or Chrome are supported.",
         )
 
+    if not _check_process(browser_type):
+        raise HTTPException(status_code=400, detail="No Browser was open to close!")
+
     if os_type == "mac" and browser_type == "chrome":
-        if _check_process(browser_type):
-            os.system("killall -9 'Google Chrome'")
-            return f"Chrome browser closed successfully!"
-        else:
-            raise HTTPException(status_code=400, detail="No Chrome browser was open!")
+        os.system("killall -9 'Google Chrome'")
+        return "Chrome browser closed successfully!"
 
     if os_type == "mac" and browser_type == "firefox":
-        if _check_process(browser_type):
-            os.system("killall -9 'firefox'")
-            return f"Firefox browser closed successfully!"
-        else:
-            raise HTTPException(status_code=400, detail="No Firefox browser was open!")
+        os.system("killall -9 'firefox'")
+        return "Firefox browser closed successfully!"
 
     if os_type == "windows" and browser_type == "chrome":
-        if _check_process(browser_type):
-            os.system("taskkill /im chrome.exe /f")
-            return f"Chrome browser closed successfully!"
-        else:
-            raise HTTPException(status_code=400, detail="No Chrome browser was open!")
+        os.system("taskkill /im chrome.exe /f")
+        return "Chrome browser closed successfully!"
 
     if os_type == "windows" and browser_type == "firefox":
-        if _check_process(browser_type):
-            os.system("taskkill /im firefox.exe /f")
-            return f"Firefox browser closed successfully!"
-        else:
-            raise HTTPException(status_code=400, detail="No Firefox browser was open!")
+        os.system("taskkill /im firefox.exe /f")
+        return "Firefox browser closed successfully!"
 
     if os_type == "linux" and browser_type == "chrome":
-        if _check_process(browser_type):
-            proc = subprocess.Popen(["pgrep", "chrome"], stdout=subprocess.PIPE)
-            for pid in proc.stdout:
-                os.kill(int(pid), signal.SIGTERM)
-                # Check if the process that we killed is alive.
-                try:
-                    os.kill(int(pid), 0)
-                    raise Exception(
-                        """wasn't able to kill the process 
-                                      HINT:use signal.SIGKILL or signal.SIGABORT"""
-                    )
-                except OSError as ex:
-                    continue
-            return f"Chrome browser closed successfully!"
-        else:
-            raise HTTPException(status_code=400, detail="No Chrome browser was open!")
+        proc = subprocess.Popen(["pgrep", "chrome"], stdout=subprocess.PIPE)
+        for pid in proc.stdout:
+            os.kill(int(pid), signal.SIGTERM)
+            # Check if the process that we killed is alive.
+            try:
+                os.kill(int(pid), 0)
+                raise Exception(
+                    """wasn't able to kill the process 
+                                  HINT:use signal.SIGKILL or signal.SIGABORT"""
+                )
+            except OSError as ex:
+                continue
+        return "Chrome browser closed successfully!"
 
     if os_type == "linux" and browser_type == "firefox":
-        if _check_process(browser_type):
-            proc = subprocess.Popen(["pgrep", "firefox"], stdout=subprocess.PIPE)
-            for pid in proc.stdout:
-                os.kill(int(pid), signal.SIGTERM)
-                # Check if the process that we killed is alive.
-                try:
-                    os.kill(int(pid), 0)
-                    raise Exception(
-                        """wasn't able to kill the process 
-                                                  HINT:use signal.SIGKILL or signal.SIGABORT"""
-                    )
-                except OSError as ex:
-                    continue
-            return f"Firefox browser closed successfully!"
-        else:
-            raise HTTPException(status_code=400, detail="No Firefox browser was open!")
+        proc = subprocess.Popen(["pgrep", "firefox"], stdout=subprocess.PIPE)
+        for pid in proc.stdout:
+            os.kill(int(pid), signal.SIGTERM)
+            # Check if the process that we killed is alive.
+            try:
+                os.kill(int(pid), 0)
+                raise Exception(
+                    """wasn't able to kill the process 
+                                              HINT:use signal.SIGKILL or signal.SIGABORT"""
+                )
+            except OSError as ex:
+                continue
+        return "Firefox browser closed successfully!"
 
 
 @app.get("/cleanup", status_code=200, description="Clears the entire browsing data!")
 async def clear_browser_data(
-    browser_type: str = Query(
+    browser_type: str = Header(
         default=None,
         description="Select the browser you want to clear the browsing data. Only Chrome and Firefox are supported!",
-    ),
+    )
 ):
     os_type = _detect_os()
     browser_type = browser_type.lower()
@@ -214,7 +201,7 @@ async def clear_browser_data(
         try:
             command = "chmod +x mac.sh && ./mac.sh " + browser_type
             os.system(command)
-            return f"Broswer data clean up successful!"
+            return "Browser data clean up successful!"
         except Exception as e:
             raise HTTPException(status_code=400, detail=e)
 
@@ -222,21 +209,21 @@ async def clear_browser_data(
         try:
             command = "chmod +x linux.sh && ./linux.sh " + browser_type
             os.system(command)
-            return f"Broswer data clean up successful!"
+            return "Browser data clean up successful!"
         except Exception as e:
             raise HTTPException(status_code=400, detail=e)
 
     if os_type == "windows" and browser_type == "chrome":
         try:
             subprocess.call([r"win_chrome.bat"])
-            return f"Broswer data clean up successful!"
+            return "Browser data clean up successful!"
         except Exception as e:
             raise HTTPException(status_code=400, detail=e)
 
     if os_type == "windows" and browser_type == "firefox":
         try:
             subprocess.call([r"win_firefox.bat"])
-            return f"Broswer data clean up successful!"
+            return "Browser data clean up successful!"
         except Exception as e:
             raise HTTPException(status_code=400, detail=e)
 
@@ -247,10 +234,10 @@ async def clear_browser_data(
     description="Fetches the url of the active tab in the browser!",
 )
 async def get_active_url(
-    browser_type: str = Query(
+    browser_type: str = Header(
         default=None,
-        description="Select the browser you want to close. Only Chrome and Firefox are supported!",
-    ),
+        description="Select the browser you want to fetch active tab url. Only Chrome and Firefox are supported!",
+    )
 ):
     os_type = _detect_os()
     browser_type = browser_type.lower()
@@ -269,7 +256,7 @@ async def get_active_url(
     if os_type == "mac" and browser_type == "firefox":
         ospath = "Library/Application Support/Firefox/Profiles"
         active_url = _fetch_active_tab_firefox(ospath)
-        return f"{active_url}"
+        return active_url
 
     if os_type == "mac" and browser_type == "chrome":
         script = 'tell application "Google Chrome" to get URL of active tab of window 1'
@@ -280,13 +267,13 @@ async def get_active_url(
             stderr=subprocess.PIPE,
             universal_newlines=True,
         )
-        out, err = p.communicate(script)
-        return f"{out}"
+        active_url, err = p.communicate(script)
+        return active_url
 
     if os_type == "linux" and browser_type == "firefox":
         ospath = ".mozilla/firefox"
         active_url = _fetch_active_tab_firefox(ospath)
-        return f"{active_url}"
+        return active_url
 
     if os_type == "linux" and browser_type == "chrome":
         p = subprocess.Popen(
@@ -295,16 +282,16 @@ async def get_active_url(
             stderr=subprocess.PIPE,
         )
         active_url, err = p.communicate()
-        return f"{active_url}"
+        return active_url
 
     if os_type == "windows" and browser_type == "firefox":
         ospath = "AppData\\Local\\Mozilla\\Firefox\\Profiles"
         active_url = _fetch_active_tab_firefox(ospath)
-        return f"{active_url}"
+        return active_url
 
     if os_type == "windows" and browser_type == "chrome":
         gui.click(0, 200)
         gui.press("f6")
         gui.hotkey("ctrl", "c")
         active_url = pyperclip.paste()
-        return f"{active_url}"
+        return active_url

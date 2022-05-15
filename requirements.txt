@@ -5,3 +5,6 @@ lz4
 pyautogui
 pyperclip
 black
+pytest
+coverage
+pytest-cov
