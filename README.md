@@ -63,4 +63,8 @@ No WebDriver / Selenium components are used. The code relies on generic python l
 
 **MacOS** - **Firefox Browser** - Webbrowser python module opens firefox browser twice. This occurs 50% of the time.
 
+# SonarQube Analysis
+<img width="1037" alt="Screenshot 2022-05-15 at 4 04 41 PM" src="https://user-images.githubusercontent.com/89900575/168468463-114ef525-9b81-448d-a0cd-0979b81eaf48.png">
+
+
 
