@@ -1,0 +1,7 @@
+version: "3.9"
+services:
+  assignment_service_1:
+    build: .
+    ports:
+      - "8000:8000"
+    image: "assignment_service_1:latest"
